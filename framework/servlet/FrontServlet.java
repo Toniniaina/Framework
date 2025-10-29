@@ -9,8 +9,6 @@ public class FrontServlet extends HttpServlet {
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) 
             throws ServletException, IOException {
-       
-        // Récupérer l'URL originale stockée par le ResourceFilter
         String originalURI = (String) req.getAttribute("originalURI");
         String urlPath = originalURI != null ? originalURI : req.getRequestURI();
     
