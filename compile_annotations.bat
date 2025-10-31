@@ -4,9 +4,14 @@ echo Compilation des annotations et du test...
 REM Créer les répertoires de build s'ils n'existent pas
 if not exist "build\classes" mkdir "build\classes"
 
-REM Compilation des annotations
-echo Compilation des annotations...
-javac -d "build\classes" framework\annotation\*.java
+REM Compilation des annotations et classes utilitaires
+echo Compilation des annotations et classes du framework...
+javac -d "build\classes" framework\annotation\Controller.java framework\annotation\GetMapping.java
+javac -classpath "build\classes" -d "build\classes" framework\annotation\MappingInfo.java
+javac -classpath "build\classes" -d "build\classes" framework\annotation\ConfigLoader.java
+javac -classpath "build\classes" -d "build\classes" framework\annotation\ClassScanner.java
+javac -classpath "build\classes" -d "build\classes" framework\annotation\UrlMappingRegistry.java
+javac -classpath "build\classes" -d "build\classes" framework\annotation\AnnotationReader.java
 
 if errorlevel 1 (
     echo Erreur de compilation des annotations!

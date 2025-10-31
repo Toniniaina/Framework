@@ -15,6 +15,13 @@ public class ResourceFilter implements Filter {
         String requestURI = httpRequest.getRequestURI();
         String contextPath = httpRequest.getContextPath();
         String resourcePath = requestURI.substring(contextPath.length());
+        
+        // Ignorer les URLs de servlets spécifiques (comme /testUrl)
+        if (resourcePath.startsWith("/testUrl")) {
+            chain.doFilter(request, response);
+            return;
+        }
+        
         if (resourcePath.equals("/") || resourcePath.isEmpty()) {
             request.setAttribute("originalURI", requestURI);
             RequestDispatcher dispatcher = request.getRequestDispatcher("/FrontServlet");
