@@ -24,12 +24,40 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Compilation du test
-echo Compilation du test...
-javac -classpath "build\classes" -d "build\classes" testFramework\*.java
+REM Copie du fichier de configuration
+echo Copie du fichier config.properties...
+copy "testFramework\resources\config.properties" "build\classes\"
+
+REM Compilation des sous-packages de com.testframework
+echo Compilation des sous-packages (controller, util, test, admin)...
+
+if exist "testFramework\com\testframework\controller\*.java" (
+    javac -classpath "build\classes" -d "build\classes" testFramework\com\testframework\controller\*.java
+    if errorlevel 1 (
+        echo Erreur de compilation du package controller!
+        pause
+        exit /b 1
+    )
+)
+
+if exist "testFramework\com\testframework\util\*.java" (
+    javac -classpath "build\classes" -d "build\classes" testFramework\com\testframework\util\*.java
+)
+
+if exist "testFramework\com\testframework\test\*.java" (
+    javac -classpath "build\classes" -d "build\classes" testFramework\com\testframework\test\*.java
+)
+
+if exist "testFramework\com\testframework\admin\*.java" (
+    javac -classpath "build\classes" -d "build\classes" testFramework\com\testframework\admin\*.java
+)
+
+REM Compilation de la classe Main
+echo Compilation de la classe Main...
+javac -classpath "build\classes" -d "build\classes" testFramework\com\testframework\Main.java
 
 if errorlevel 1 (
-    echo Erreur de compilation du test!
+    echo Erreur de compilation de la classe Main!
     pause
     exit /b 1
 )
@@ -37,6 +65,6 @@ if errorlevel 1 (
 echo Compilation réussie!
 echo.
 echo Pour tester les annotations:
-echo java -cp "build\classes" testFramework.TestFramework
+echo java -cp "build\classes" testFramework.com.testframework.Main
 echo.
 pause
