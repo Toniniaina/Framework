@@ -1,4 +1,6 @@
-package framework.annotation;
+package framework.utilitaire;
+
+import framework.annotation.GetMapping;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;

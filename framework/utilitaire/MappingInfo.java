@@ -1,4 +1,4 @@
-package framework.annotation;
+package framework.utilitaire;
 
 import java.lang.reflect.Method;
 
