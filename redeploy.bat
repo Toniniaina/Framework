@@ -16,12 +16,17 @@ if not exist "testFramework\WEB-INF\lib" mkdir "testFramework\WEB-INF\lib"
 REM Étape 3: Compilation
 echo 3. Compilation des sources du framework...
 
-REM Compiler les annotations
+REM Compiler les annotations de base
 javac -d "build\classes" framework\annotation\Controller.java framework\annotation\GetMapping.java
-javac -classpath "build\classes" -d "build\classes" framework\annotation\MappingInfo.java
-javac -classpath "build\classes" -d "build\classes" framework\annotation\ConfigLoader.java
-javac -classpath "build\classes" -d "build\classes" framework\annotation\ClassScanner.java
-javac -classpath "build\classes" -d "build\classes" framework\annotation\UrlMappingRegistry.java
+
+REM Compiler les classes utilitaires (nouveau package framework\utilitaire)
+REM IMPORTANT: compiler MappingInfo AVANT UrlMappingRegistry
+javac -classpath "build\classes" -d "build\classes" framework\utilitaire\MappingInfo.java
+javac -classpath "build\classes" -d "build\classes" framework\utilitaire\ConfigLoader.java
+javac -classpath "build\classes" -d "build\classes" framework\utilitaire\ClassScanner.java
+javac -classpath "build\classes" -d "build\classes" framework\utilitaire\UrlMappingRegistry.java
+
+REM Compiler le service principal qui dépend des utilitaires
 javac -classpath "build\classes" -d "build\classes" framework\annotation\AnnotationReader.java
 
 if errorlevel 1 (
@@ -32,7 +37,10 @@ if errorlevel 1 (
 
 REM Compiler les servlets
 echo Compilation des servlets...
-javac -classpath "jakarta.servlet-api_5.0.0.jar;build\classes" -d "build\classes" framework\servlet\*.java
+REM FrontServlet reste dans framework\servlet
+javac -classpath "jakarta.servlet-api_5.0.0.jar;build\classes" -d "build\classes" framework\servlet\FrontServlet.java
+REM ResourceFilter et UrlTestServlet ont été déplacés dans framework\utilitaire
+javac -classpath "jakarta.servlet-api_5.0.0.jar;build\classes" -d "build\classes" framework\utilitaire\ResourceFilter.java framework\utilitaire\UrlTestServlet.java
 
 if errorlevel 1 (
     echo ERREUR: Échec de la compilation des servlets!
@@ -90,3 +98,30 @@ echo 4. Copiez le dossier testFramework dans webapps
 echo 5. Redémarrez Tomcat
 echo.
 pause
+
+REM Étape 8: Déploiement automatique vers Tomcat (copie dans webapps)
+set "TOMCAT_WEBAPPS=D:\Pxampp\tomcat\webapps"
+echo.
+echo 8. Déploiement vers %TOMCAT_WEBAPPS% ...
+
+if not exist "%TOMCAT_WEBAPPS%" (
+    echo [AVERTISSEMENT] Le dossier %TOMCAT_WEBAPPS% n'existe pas. Vérifiez le chemin de Tomcat.
+    goto :eof
+)
+
+REM Supprimer l'ancienne application si elle existe
+if exist "%TOMCAT_WEBAPPS%\testFramework" (
+    echo - Suppression de l'ancienne application testFramework ...
+    rmdir /s /q "%TOMCAT_WEBAPPS%\testFramework"
+)
+
+REM Copier la nouvelle version
+echo - Copie de l'application testFramework ...
+xcopy "testFramework" "%TOMCAT_WEBAPPS%\testFramework" /E /I /Y >nul
+if errorlevel 1 (
+    echo [ERREUR] Échec de la copie vers %TOMCAT_WEBAPPS%\testFramework
+    goto :eof
+)
+
+echo ✅ Déploiement copié dans %TOMCAT_WEBAPPS%\testFramework
+echo (Redémarrez Tomcat pour prendre en compte les changements.)

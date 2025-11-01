@@ -4,6 +4,12 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+// Utilitaires déplacés
+import framework.utilitaire.ConfigLoader;
+import framework.utilitaire.ClassScanner;
+import framework.utilitaire.UrlMappingRegistry;
+import framework.utilitaire.MappingInfo;
+
 /**
  * Service principal pour la gestion des annotations
  * Coordonne ConfigLoader, ClassScanner et UrlMappingRegistry

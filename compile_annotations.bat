@@ -1,16 +1,22 @@
 @echo off
 echo Compilation des annotations et du test...
 
-REM Créer les répertoires de build s'ils n'existent pas
-if not exist "build\classes" mkdir "build\classes"
+REM Nettoyage des anciens .class pour éviter les conflits de packages déplacés
+if exist "build\classes" rmdir /s /q "build\classes"
+mkdir "build\classes"
 
 REM Compilation des annotations et classes utilitaires
 echo Compilation des annotations et classes du framework...
 javac -d "build\classes" framework\annotation\Controller.java framework\annotation\GetMapping.java
-javac -classpath "build\classes" -d "build\classes" framework\annotation\MappingInfo.java
-javac -classpath "build\classes" -d "build\classes" framework\annotation\ConfigLoader.java
-javac -classpath "build\classes" -d "build\classes" framework\annotation\ClassScanner.java
-javac -classpath "build\classes" -d "build\classes" framework\annotation\UrlMappingRegistry.java
+
+REM Classes utilitaires (déplacées dans framework\utilitaire)
+REM IMPORTANT: compiler MappingInfo AVANT UrlMappingRegistry
+javac -classpath "build\classes" -d "build\classes" framework\utilitaire\MappingInfo.java
+javac -classpath "build\classes" -d "build\classes" framework\utilitaire\ConfigLoader.java
+javac -classpath "build\classes" -d "build\classes" framework\utilitaire\ClassScanner.java
+javac -classpath "build\classes" -d "build\classes" framework\utilitaire\UrlMappingRegistry.java
+
+REM Service principal qui dépend des utilitaires
 javac -classpath "build\classes" -d "build\classes" framework\annotation\AnnotationReader.java
 
 if errorlevel 1 (
@@ -21,7 +27,10 @@ if errorlevel 1 (
 
 REM Compilation des servlets
 echo Compilation des servlets...
-javac -classpath "jakarta.servlet-api_5.0.0.jar;build\classes" -d "build\classes" framework\servlet\*.java
+REM Ne compiler que FrontServlet dans framework\servlet
+javac -classpath "jakarta.servlet-api_5.0.0.jar;build\classes" -d "build\classes" framework\servlet\FrontServlet.java
+REM Compiler ResourceFilter et UrlTestServlet dans framework\utilitaire
+javac -classpath "jakarta.servlet-api_5.0.0.jar;build\classes" -d "build\classes" framework\utilitaire\ResourceFilter.java framework\utilitaire\UrlTestServlet.java
 
 if errorlevel 1 (
     echo Erreur de compilation des servlets!

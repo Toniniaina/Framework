@@ -1,4 +1,6 @@
-package framework.annotation;
+package framework.utilitaire;
+
+import framework.annotation.Controller;
 
 import java.io.File;
 import java.net.URL;
