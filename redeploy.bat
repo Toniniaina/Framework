@@ -26,6 +26,10 @@ javac -classpath "build\classes" -d "build\classes" framework\utilitaire\ConfigL
 javac -classpath "build\classes" -d "build\classes" framework\utilitaire\ClassScanner.java
 javac -classpath "build\classes" -d "build\classes" framework\utilitaire\UrlMappingRegistry.java
 
+REM Compiler l'utilitaire d'invocation avant les servlets qui en dépendent
+javac -classpath "build\classes" -d "build\classes" framework\utilitaire\MethodInvoker.java
+javac -classpath "build\classes" -d "build\classes" framework\utilitaire\ModelAndView.java
+
 REM Compiler le service principal qui dépend des utilitaires
 javac -classpath "build\classes" -d "build\classes" framework\annotation\AnnotationReader.java
 
@@ -56,9 +60,22 @@ REM Copier config.properties
 copy "testFramework\resources\config.properties" "testFramework\WEB-INF\classes\"
 
 REM Compiler les controllers de test
-javac -classpath "build\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\controller\*.java
-javac -classpath "build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\admin\*.java
-javac -classpath "build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\util\*.java
+if exist "testFramework\com\testframework\controller" (
+    javac -classpath "build\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\controller\*.java
+)
+
+if exist "testFramework\com\testframework\admin" (
+    javac -classpath "build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\admin\*.java
+)
+
+if exist "testFramework\com\testframework\model" (
+    javac -classpath "build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\model\*.java
+)
+
+if exist "testFramework\com\testframework\util" (
+    javac -classpath "build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\util\*.java
+)
+
 javac -classpath "build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\Main.java
 
 if errorlevel 1 (
