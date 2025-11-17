@@ -11,6 +11,8 @@ import java.util.Properties;
 public class ConfigLoader {
     
     private String basePackage;
+    private String viewPrefix;
+    private String viewSuffix;
     
     /**
      * Charge le package de base depuis le fichier config.properties
@@ -39,13 +41,19 @@ public class ConfigLoader {
                     basePackage = basePackage.trim();
                     System.out.println("Package de base chargé depuis config.properties: " + basePackage);
                 }
+                viewPrefix = propOrDefault(props, "view.prefix", "/WEB-INF/views/");
+                viewSuffix = propOrDefault(props, "view.suffix", ".jsp");
             } else {
                 System.out.println("ERREUR: Fichier config.properties introuvable!");
                 basePackage = "com.testframework"; // Valeur par défaut
+                viewPrefix = "/WEB-INF/views/";
+                viewSuffix = ".jsp";
             }
         } catch (Exception e) {
             System.out.println("Erreur lors du chargement du config.properties: " + e.getMessage());
             basePackage = "com.testframework"; // Valeur par défaut
+            viewPrefix = "/WEB-INF/views/";
+            viewSuffix = ".jsp";
         } finally {
             if (input != null) {
                 try {
@@ -62,5 +70,24 @@ public class ConfigLoader {
             loadConfiguration();
         }
         return basePackage;
+    }
+
+    public String getViewPrefix() {
+        if (viewPrefix == null) {
+            loadConfiguration();
+        }
+        return viewPrefix;
+    }
+
+    public String getViewSuffix() {
+        if (viewSuffix == null) {
+            loadConfiguration();
+        }
+        return viewSuffix;
+    }
+
+    private String propOrDefault(Properties p, String key, String defVal) {
+        String v = p.getProperty(key);
+        return v != null ? v.trim() : defVal;
     }
 }
