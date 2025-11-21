@@ -4,6 +4,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Map;
 import framework.annotation.AnnotationReader;
 import framework.utilitaire.MappingInfo;
 import framework.utilitaire.ConfigLoader;
@@ -40,7 +41,7 @@ public class FrontServlet extends HttpServlet {
                     String viewPath = prefix + mv.getViewName() + suffix;
 
                     // Attacher le modèle sur la requête
-                    for (var entry : mv.getModel().entrySet()) {
+                    for (Map.Entry<String, Object> entry : mv.getModel().entrySet()) {
                         req.setAttribute(entry.getKey(), entry.getValue());
                     }
 
@@ -100,7 +101,7 @@ public class FrontServlet extends HttpServlet {
                         ModelAndView mv = (ModelAndView) result;
                         String viewPath = prefix + mv.getViewName() + suffix;
 
-                        for (var entry : mv.getModel().entrySet()) {
+                        for (Map.Entry<String, Object> entry : mv.getModel().entrySet()) {
                             req.setAttribute(entry.getKey(), entry.getValue());
                         }
 
