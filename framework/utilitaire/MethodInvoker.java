@@ -1,6 +1,7 @@
 package framework.utilitaire;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -20,7 +21,7 @@ public class MethodInvoker {
         if (target == null) throw new IllegalArgumentException("target is null");
         try {
             Method m = findMethod(target.getClass(), methodName, paramTypes);
-            if (!m.canAccess(target)) m.setAccessible(true);
+            if (!m.isAccessible()) m.setAccessible(true);
             return m.invoke(target, args);
         } catch (RuntimeException re) {
             throw re;
@@ -37,7 +38,7 @@ public class MethodInvoker {
         if (clazz == null) throw new IllegalArgumentException("clazz is null");
         try {
             Method m = findMethod(clazz, methodName, paramTypes);
-            if (!m.canAccess(null)) m.setAccessible(true);
+            if (!m.isAccessible()) m.setAccessible(true);
             return m.invoke(null, args);
         } catch (RuntimeException re) {
             throw re;
@@ -60,10 +61,10 @@ public class MethodInvoker {
         List<Method> methods = new ArrayList<>(Arrays.asList(clazz.getDeclaredMethods()));
         for (Method m : methods) {
             if (m.getParameterCount() == 0) {
-                boolean isPrivate = !m.canAccess(target);
-                if (includePrivate || !isPrivate) {
+                boolean isPublic = Modifier.isPublic(m.getModifiers());
+                if (includePrivate || isPublic) {
                     try {
-                        if (!m.canAccess(target)) m.setAccessible(true);
+                        if (!m.isAccessible()) m.setAccessible(true);
                         Object res = m.invoke(target);
                         results.add(res);
                     } catch (Throwable t) {
