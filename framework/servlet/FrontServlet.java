@@ -45,18 +45,9 @@ public class FrontServlet extends HttpServlet {
                     RequestParam rp = parameters[i].getAnnotation(RequestParam.class);
                     if (rp != null) {
                         String paramName = rp.value();
-                        // Strict rule: annotation value must be present and equal to the Java parameter name
                         if (paramName == null || paramName.isEmpty()) {
-                            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                            resp.setContentType("text/plain; charset=UTF-8");
-                            resp.getWriter().println("@RequestParam value must not be empty for parameter '" + parameters[i].getName() + "'");
-                            return;
-                        }
-                        if (!parameters[i].getName().equals(paramName)) {
-                            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                            resp.setContentType("text/plain; charset=UTF-8");
-                            resp.getWriter().println("@RequestParam name mismatch: expected Java parameter name '" + parameters[i].getName() + "' to equal annotation value '" + paramName + "'");
-                            return;
+                            // If not provided, fallback to Java parameter name (requires -parameters)
+                            paramName = parameters[i].getName();
                         }
                         String raw = req.getParameter(paramName);
                         if (raw == null) {
