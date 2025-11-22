@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Map;
 import framework.annotation.AnnotationReader;
+import framework.annotation.RequestParam;
 import framework.utilitaire.MappingInfo;
 import framework.utilitaire.ConfigLoader;
 import framework.utilitaire.MethodInvoker;
@@ -30,7 +31,55 @@ public class FrontServlet extends HttpServlet {
             try {
                 Class<?> controller = mapping.getControllerClass();
                 Object instance = controller.getDeclaredConstructor().newInstance();
-                Object result = mapping.getMethod().invoke(instance);
+                // Resolve method parameters (GET only) using @RequestParam and simple injection
+                java.lang.reflect.Method method = mapping.getMethod();
+                java.lang.reflect.Parameter[] parameters = method.getParameters();
+                Object[] args = new Object[parameters.length];
+
+                for (int i = 0; i < parameters.length; i++) {
+                    Class<?> type = parameters[i].getType();
+                    // Injection of servlet objects
+                    if (type == HttpServletRequest.class) { args[i] = req; continue; }
+                    if (type == HttpServletResponse.class) { args[i] = resp; continue; }
+
+                    RequestParam rp = parameters[i].getAnnotation(RequestParam.class);
+                    if (rp != null) {
+                        String paramName = rp.value();
+                        // Strict rule: annotation value must be present and equal to the Java parameter name
+                        if (paramName == null || paramName.isEmpty()) {
+                            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                            resp.setContentType("text/plain; charset=UTF-8");
+                            resp.getWriter().println("@RequestParam value must not be empty for parameter '" + parameters[i].getName() + "'");
+                            return;
+                        }
+                        if (!parameters[i].getName().equals(paramName)) {
+                            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                            resp.setContentType("text/plain; charset=UTF-8");
+                            resp.getWriter().println("@RequestParam name mismatch: expected Java parameter name '" + parameters[i].getName() + "' to equal annotation value '" + paramName + "'");
+                            return;
+                        }
+                        String raw = req.getParameter(paramName);
+                        if (raw == null) {
+                            if (rp.required()) {
+                                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                                resp.setContentType("text/plain; charset=UTF-8");
+                                resp.getWriter().println("Missing required parameter: " + paramName);
+                                return;
+                            } else {
+                                raw = rp.defaultValue();
+                            }
+                        }
+                        args[i] = convertSimple(raw, type);
+                        continue;
+                    }
+
+                    // If not annotated, do not bind implicitly (strict mode)
+
+                    // Otherwise leave null (unsupported type without binder)
+                    args[i] = null;
+                }
+
+                Object result = method.invoke(instance, args);
 
                 // Si la méthode retourne un ModelAndView, forward vers la vue
                 if (result instanceof ModelAndView) {
@@ -152,5 +201,18 @@ public class FrontServlet extends HttpServlet {
         out.println("<h1>404 - Ressource non trouvée</h1>");
         out.println("<p>La ressource demandée n'a pas été trouvée.</p>");
         out.println("</body></html>");
+    }
+
+    private Object convertSimple(String raw, Class<?> type) {
+        if (type == String.class) return raw;
+        if (type == int.class) return raw == null || raw.isEmpty() ? 0 : Integer.parseInt(raw);
+        if (type == Integer.class) return raw == null || raw.isEmpty() ? null : Integer.valueOf(raw);
+        if (type == long.class) return raw == null || raw.isEmpty() ? 0L : Long.parseLong(raw);
+        if (type == Long.class) return raw == null || raw.isEmpty() ? null : Long.valueOf(raw);
+        if (type == double.class) return raw == null || raw.isEmpty() ? 0d : Double.parseDouble(raw);
+        if (type == Double.class) return raw == null || raw.isEmpty() ? null : Double.valueOf(raw);
+        if (type == boolean.class) return raw != null && ("true".equalsIgnoreCase(raw) || "1".equals(raw));
+        if (type == Boolean.class) return raw == null ? null : ("true".equalsIgnoreCase(raw) || "1".equals(raw));
+        return null;
     }
 }
