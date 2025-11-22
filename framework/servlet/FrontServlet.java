@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.util.Map;
 import framework.annotation.AnnotationReader;
 import framework.annotation.RequestParam;
+import framework.annotation.PathVariable;
 import framework.utilitaire.MappingInfo;
 import framework.utilitaire.ConfigLoader;
 import framework.utilitaire.MethodInvoker;
@@ -41,6 +42,21 @@ public class FrontServlet extends HttpServlet {
                     // Injection of servlet objects
                     if (type == HttpServletRequest.class) { args[i] = req; continue; }
                     if (type == HttpServletResponse.class) { args[i] = resp; continue; }
+
+                    // PathVariable binding
+                    PathVariable pv = parameters[i].getAnnotation(PathVariable.class);
+                    if (pv != null) {
+                        String varName = pv.value();
+                        String val = mapping.getPathVariables().get(varName);
+                        if (val == null) {
+                            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                            resp.setContentType("text/plain; charset=UTF-8");
+                            resp.getWriter().println("Missing path variable: " + varName);
+                            return;
+                        }
+                        args[i] = convertSimple(val, type);
+                        continue;
+                    }
 
                     RequestParam rp = parameters[i].getAnnotation(RequestParam.class);
                     if (rp != null) {
