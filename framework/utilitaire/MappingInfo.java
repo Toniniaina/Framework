@@ -9,20 +9,33 @@ public class MappingInfo {
     private Class<?> controllerClass;
     private Method method;
     private String url;
+    private String httpMethod; // e.g. "GET", "POST" or "*" for any
     private boolean found;
     private Map<String, String> pathVariables;
+    private boolean methodNotAllowed;
+    private java.util.Set<String> allowedMethods;
     
     public MappingInfo(Class<?> controllerClass, Method method, String url) {
+        this(controllerClass, method, url, "*");
+    }
+
+    public MappingInfo(Class<?> controllerClass, Method method, String url, String httpMethod) {
         this.controllerClass = controllerClass;
         this.method = method;
         this.url = url;
+        this.httpMethod = httpMethod == null ? "*" : httpMethod;
         this.found = true;
         this.pathVariables = new HashMap<>();
+        this.methodNotAllowed = false;
+        this.allowedMethods = null;
     }
     
     public MappingInfo() {
         this.found = false;
         this.pathVariables = new HashMap<>();
+        this.httpMethod = null;
+        this.methodNotAllowed = false;
+        this.allowedMethods = null;
     }
     
     public Class<?> getControllerClass() {
@@ -32,6 +45,10 @@ public class MappingInfo {
     public Method getMethod() {
         return method;
     }
+
+    public String getHttpMethod() {
+        return httpMethod;
+    }
     
     public String getUrl() {
         return url;
@@ -39,6 +56,20 @@ public class MappingInfo {
     
     public boolean isFound() {
         return found;
+    }
+
+    public boolean isMethodNotAllowed() {
+        return methodNotAllowed;
+    }
+
+    public java.util.Set<String> getAllowedMethods() {
+        return allowedMethods == null ? java.util.Collections.emptySet() : java.util.Collections.unmodifiableSet(allowedMethods);
+    }
+
+    public void setMethodNotAllowed(java.util.Set<String> allowed) {
+        this.found = false;
+        this.methodNotAllowed = true;
+        this.allowedMethods = allowed == null ? new java.util.HashSet<>() : new java.util.HashSet<>(allowed);
     }
     
     public String getClassName() {

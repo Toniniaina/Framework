@@ -1,6 +1,8 @@
 package framework.utilitaire;
 
 import framework.annotation.GetMapping;
+import framework.annotation.PostMapping;
+import framework.annotation.RequestMapping;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -16,7 +18,8 @@ import java.util.regex.Pattern;
  */
 public class UrlMappingRegistry {
     
-    private Map<String, MappingInfo> urlMappings; // exact matches
+    // exact matches: url -> (method -> MappingInfo) ; method '*' means any
+    private Map<String, Map<String, MappingInfo>> urlMappings;
     private List<PatternEntry> patternMappings;   // template-based matches
     private boolean initialized;
     
@@ -44,14 +47,35 @@ public class UrlMappingRegistry {
             Method[] methods = clazz.getDeclaredMethods();
             
             for (Method method : methods) {
-                if (method.isAnnotationPresent(GetMapping.class)) {
-                    GetMapping mapping = method.getAnnotation(GetMapping.class);
-                    String url = mapping.value();
+                if (method.isAnnotationPresent(GetMapping.class) || method.isAnnotationPresent(PostMapping.class) || method.isAnnotationPresent(RequestMapping.class)) {
+                    String url = null;
+                    if (method.isAnnotationPresent(GetMapping.class)) {
+                        GetMapping mapping = method.getAnnotation(GetMapping.class);
+                        url = mapping.value();
+                    } else if (method.isAnnotationPresent(PostMapping.class)) {
+                        PostMapping mapping = method.getAnnotation(PostMapping.class);
+                        url = mapping.value();
+                    } else if (method.isAnnotationPresent(RequestMapping.class)) {
+                        RequestMapping mapping = method.getAnnotation(RequestMapping.class);
+                        url = mapping.value();
+                    }
+                    // determine allowed method
+                    String declaredMethod = "*";
+                    if (method.isAnnotationPresent(GetMapping.class)) declaredMethod = "GET";
+                    else if (method.isAnnotationPresent(PostMapping.class)) declaredMethod = "POST";
+                    else if (method.isAnnotationPresent(RequestMapping.class)) {
+                        RequestMapping rm = method.getAnnotation(RequestMapping.class);
+                        if (rm != null && rm.method() != null && !rm.method().trim().isEmpty()) declaredMethod = rm.method().trim().toUpperCase();
+                        else declaredMethod = "*";
+                    }
+
                     if (isTemplate(url)) {
                         PatternEntry pe = compileTemplate(url, clazz, method);
+                        pe.allowedMethods.add(declaredMethod);
                         patternMappings.add(pe);
                     } else {
-                        urlMappings.put(url, new MappingInfo(clazz, method, url));
+                        Map<String, MappingInfo> methodMap = urlMappings.computeIfAbsent(url, k -> new HashMap<>());
+                        methodMap.put(declaredMethod, new MappingInfo(clazz, method, url, declaredMethod));
                         urlCount++;
                     }
                 }
@@ -67,23 +91,46 @@ public class UrlMappingRegistry {
      * @param url L'URL à rechercher
      * @return MappingInfo ou null si non trouvé
      */
-    public MappingInfo findByUrl(String url) {
-        MappingInfo exact = urlMappings.get(url);
-        if (exact != null) return exact;
+    public MappingInfo findByUrl(String url, String httpMethod) {
+        String method = httpMethod == null ? "GET" : httpMethod.toUpperCase();
 
-        // Try pattern mappings
+        // exact match
+        Map<String, MappingInfo> methods = urlMappings.get(url);
+        if (methods != null) {
+            MappingInfo mi = methods.get(method);
+            if (mi != null) return mi;
+            mi = methods.get("*");
+            if (mi != null) return mi;
+            // method not allowed
+            MappingInfo info = new MappingInfo();
+            info.setMethodNotAllowed(methods.keySet());
+            return info;
+        }
+
+        // pattern mappings
+        java.util.Set<String> collectedAllowed = new java.util.HashSet<>();
         for (PatternEntry pe : patternMappings) {
             Matcher m = pe.pattern.matcher(url);
             if (m.matches()) {
-                MappingInfo info = new MappingInfo(pe.controllerClass, pe.method, pe.template);
-                // extract variables by index order
-                for (int i = 0; i < pe.variableNames.size(); i++) {
-                    String value = m.group(i + 1);
-                    info.setPathVariable(pe.variableNames.get(i), value);
+                // if allowed for this method
+                if (pe.allowedMethods.contains(method) || pe.allowedMethods.contains("*")) {
+                    MappingInfo info = new MappingInfo(pe.controllerClass, pe.method, pe.template, method);
+                    for (int i = 0; i < pe.variableNames.size(); i++) {
+                        String value = m.group(i + 1);
+                        info.setPathVariable(pe.variableNames.get(i), value);
+                    }
+                    return info;
                 }
-                return info;
+                collectedAllowed.addAll(pe.allowedMethods);
             }
         }
+
+        if (!collectedAllowed.isEmpty()) {
+            MappingInfo info = new MappingInfo();
+            info.setMethodNotAllowed(collectedAllowed);
+            return info;
+        }
+
         return null;
     }
     
@@ -141,6 +188,7 @@ public class UrlMappingRegistry {
         final Method method;
         final Pattern pattern;
         final List<String> variableNames;
+        final java.util.Set<String> allowedMethods = new java.util.HashSet<>();
 
         PatternEntry(String template, Class<?> controllerClass, Method method, Pattern pattern, List<String> variableNames) {
             this.template = template;

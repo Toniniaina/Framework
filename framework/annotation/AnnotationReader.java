@@ -35,7 +35,7 @@ public class AnnotationReader {
             Method[] methods = clazz.getDeclaredMethods();
             
             for (Method method : methods) {
-                if (method.isAnnotationPresent(GetMapping.class)) {
+                if (method.isAnnotationPresent(GetMapping.class) || method.isAnnotationPresent(PostMapping.class) || method.isAnnotationPresent(RequestMapping.class)) {
                     classesWithAnnotations.add(clazz);
                     break;
                 }
@@ -71,12 +71,21 @@ public class AnnotationReader {
                 System.out.println("  └─ Annotée avec @Controller");
             }
             
-            // Lister les méthodes avec @GetMapping
+            // Lister les méthodes avec annotations de mapping
             Method[] methods = clazz.getDeclaredMethods();
             for (Method method : methods) {
                 if (method.isAnnotationPresent(GetMapping.class)) {
                     GetMapping mapping = method.getAnnotation(GetMapping.class);
-                    System.out.println("  └─ Méthode: " + method.getName() + " -> " + mapping.value());
+                    System.out.println("  └─ Méthode: " + method.getName() + " -> " + mapping.value() + " [GET]");
+                }
+                if (method.isAnnotationPresent(PostMapping.class)) {
+                    PostMapping mapping = method.getAnnotation(PostMapping.class);
+                    System.out.println("  └─ Méthode: " + method.getName() + " -> " + mapping.value() + " [POST]");
+                }
+                if (method.isAnnotationPresent(RequestMapping.class)) {
+                    RequestMapping mapping = method.getAnnotation(RequestMapping.class);
+                    String m = mapping.method() == null || mapping.method().isEmpty() ? "ANY" : mapping.method();
+                    System.out.println("  └─ Méthode: " + method.getName() + " -> " + mapping.value() + " [" + m + "]");
                 }
             }
         }
@@ -112,12 +121,22 @@ public class AnnotationReader {
      * @return MappingInfo ou un objet vide si non trouvé (404)
      */
     public static MappingInfo findMappingByUrl(String url) {
+        return findMappingByUrl(url, "GET");
+    }
+
+    /**
+     * Recherche une URL en tenant compte de la méthode HTTP
+     * @param url L'URL à rechercher
+     * @param httpMethod La méthode HTTP (GET, POST...)
+     * @return MappingInfo ou un objet vide si non trouvé (404). Si la ressource existe mais la méthode n'est pas autorisée, renvoie MappingInfo avec methodNotAllowed=true
+     */
+    public static MappingInfo findMappingByUrl(String url, String httpMethod) {
         if (!urlRegistry.isInitialized()) {
             System.out.println("ATTENTION: AnnotationReader n'est pas initialisé. Appelez init() au démarrage.");
             init();
         }
-        
-        MappingInfo info = urlRegistry.findByUrl(url);
+
+        MappingInfo info = urlRegistry.findByUrl(url, httpMethod);
         return info != null ? info : new MappingInfo();
     }
     
