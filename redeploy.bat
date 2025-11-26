@@ -17,7 +17,7 @@ REM Étape 3: Compilation
 echo 3. Compilation des sources du framework...
 
 REM Compiler les annotations de base
-javac -parameters -d "build\classes" framework\annotation\Controller.java framework\annotation\GetMapping.java framework\annotation\RequestParam.java framework\annotation\PathVariable.java
+javac -parameters -d "build\classes" framework\annotation\Controller.java framework\annotation\GetMapping.java framework\annotation\PostMapping.java framework\annotation\RequestMapping.java framework\annotation\RequestParam.java framework\annotation\PathVariable.java
 
 REM Compiler les classes utilitaires (nouveau package framework\utilitaire)
 REM IMPORTANT: compiler MappingInfo AVANT UrlMappingRegistry
@@ -117,7 +117,7 @@ echo.
 pause
 
 REM Étape 8: Déploiement automatique vers Tomcat (copie dans webapps)
-set "TOMCAT_WEBAPPS=D:\Pxampp\tomcat\webapps"
+set "TOMCAT_WEBAPPS=E:\Pxampp\tomcat\webapps"
 echo.
 echo 8. Déploiement vers %TOMCAT_WEBAPPS% ...
 

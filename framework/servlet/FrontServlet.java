@@ -27,7 +27,27 @@ public class FrontServlet extends HttpServlet {
         AnnotationReader.init();
 
         // Essayer de retrouver un mapping pour la ressource demandée
-        MappingInfo mapping = AnnotationReader.findMappingByUrl(resourcePath);
+        MappingInfo mapping = AnnotationReader.findMappingByUrl(resourcePath, req.getMethod());
+        if (mapping == null) mapping = new MappingInfo();
+
+        if (mapping.isMethodNotAllowed()) {
+            // Return 405 Method Not Allowed with Allow header and a friendly HTML page
+            resp.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+            java.util.Set<String> allowed = mapping.getAllowedMethods();
+            String allowHeader = String.join(", ", allowed);
+            resp.setHeader("Allow", allowHeader);
+            resp.setContentType("text/html; charset=UTF-8");
+            java.io.PrintWriter out = resp.getWriter();
+            out.println("<html><head><meta charset='UTF-8'><title>405 - Method Not Allowed</title>"
+                    + "<style>body{font-family:Arial, sans-serif;padding:32px;color:#333} h1{color:#b00020}</style></head><body>");
+            out.println("<h1>405 - Method Not Allowed</h1>");
+            out.println("<p>The requested URL <code>" + resourcePath + "</code> exists but the HTTP method <strong>" + req.getMethod() + "</strong> is not allowed.</p>");
+            out.println("<p>Allowed methods: <code>" + allowHeader + "</code></p>");
+            out.println("<p><a href='" + req.getContextPath() + "'>Return to application root</a></p>");
+            out.println("</body></html>");
+            return;
+        }
+
         if (mapping.isFound()) {
             try {
                 Class<?> controller = mapping.getControllerClass();
@@ -58,7 +78,7 @@ public class FrontServlet extends HttpServlet {
                         continue;
                     }
 
-                    RequestParam rp = parameters[i].getAnnotation(RequestParam.class);
+                        RequestParam rp = parameters[i].getAnnotation(RequestParam.class);
                     if (rp != null) {
                         String paramName = rp.value();
                         if (paramName == null || paramName.isEmpty()) {
