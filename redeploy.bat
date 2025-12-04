@@ -16,35 +16,25 @@ if not exist "testFramework\WEB-INF\lib" mkdir "testFramework\WEB-INF\lib"
 REM Étape 3: Compilation
 echo 3. Compilation des sources du framework...
 
-REM Compiler les annotations de base
-javac -parameters -d "build\classes" framework\annotation\Controller.java framework\annotation\GetMapping.java framework\annotation\PostMapping.java framework\annotation\RequestMapping.java framework\annotation\RequestParam.java framework\annotation\PathVariable.java
+REM Compiler toutes les annotations
+javac -parameters -d "build\classes" framework\annotation\*.java
 
-REM Compiler les classes utilitaires (nouveau package framework\utilitaire)
-REM IMPORTANT: compiler MappingInfo AVANT UrlMappingRegistry
+REM Compiler les utilitaires SANS dépendances servlet (MappingInfo avant UrlMappingRegistry)
 javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\MappingInfo.java
-javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\ConfigLoader.java
-javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\ClassScanner.java
-javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\UrlMappingRegistry.java
-
-REM Compiler l'utilitaire d'invocation avant les servlets qui en dépendent
-javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\MethodInvoker.java
-javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\ModelAndView.java
+javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\ConfigLoader.java framework\utilitaire\ClassScanner.java framework\utilitaire\UrlMappingRegistry.java framework\utilitaire\MethodInvoker.java framework\utilitaire\ModelAndView.java framework\utilitaire\FormMapper.java framework\utilitaire\ValidationResult.java
 
 REM Compiler le service principal qui dépend des utilitaires
 javac -parameters -classpath "build\classes" -d "build\classes" framework\annotation\AnnotationReader.java
 
 if errorlevel 1 (
-    echo ERREUR: Échec de la compilation des annotations!
+    echo ERREUR: Échec de la compilation des annotations/utilitaires!
     pause
     exit /b 1
 )
 
-REM Compiler les servlets
+REM Compiler les servlets (dépendent de jakarta.servlet-api_5.0.0.jar)
 echo Compilation des servlets...
-REM FrontServlet reste dans framework\servlet
-javac -parameters -classpath "jakarta.servlet-api_5.0.0.jar;build\classes" -d "build\classes" framework\servlet\FrontServlet.java
-REM ResourceFilter et UrlTestServlet ont été déplacés dans framework\utilitaire
-javac -parameters -classpath "jakarta.servlet-api_5.0.0.jar;build\classes" -d "build\classes" framework\utilitaire\ResourceFilter.java framework\utilitaire\UrlTestServlet.java
+javac -parameters -classpath "jakarta.servlet-api_5.0.0.jar;build\classes" -d "build\classes" framework\servlet\*.java framework\utilitaire\ResourceFilter.java framework\utilitaire\UrlTestServlet.java
 
 if errorlevel 1 (
     echo ERREUR: Échec de la compilation des servlets!
@@ -59,24 +49,15 @@ if not exist "testFramework\WEB-INF\classes" mkdir "testFramework\WEB-INF\classe
 REM Copier config.properties
 copy "testFramework\resources\config.properties" "testFramework\WEB-INF\classes\"
 
-REM Compiler les controllers de test
-if exist "testFramework\com\testframework\controller" (
-    javac -parameters -classpath "build\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\controller\*.java
+REM Compiler toutes les classes test (model, controller, admin, util)
+for %%D in (model controller admin util) do (
+    if exist "testFramework\com\testframework\%%D" (
+        javac -parameters -classpath "jakarta.servlet-api_5.0.0.jar;build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\%%D\*.java
+    )
 )
 
-if exist "testFramework\com\testframework\admin" (
-    javac -parameters -classpath "build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\admin\*.java
-)
-
-if exist "testFramework\com\testframework\model" (
-    javac -parameters -classpath "build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\model\*.java
-)
-
-if exist "testFramework\com\testframework\util" (
-    javac -parameters -classpath "build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\util\*.java
-)
-
-javac -parameters -classpath "build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\Main.java
+REM Compiler la classe principale
+javac -parameters -classpath "jakarta.servlet-api_5.0.0.jar;build\classes;testFramework\WEB-INF\classes" -d "testFramework\WEB-INF\classes" testFramework\com\testframework\Main.java
 
 if errorlevel 1 (
     echo ERREUR: Échec de la compilation des classes de test!
