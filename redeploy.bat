@@ -21,7 +21,7 @@ javac -parameters -d "build\classes" framework\annotation\*.java
 
 REM Compiler les utilitaires SANS dépendances servlet (MappingInfo avant UrlMappingRegistry)
 javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\MappingInfo.java
-javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\ConfigLoader.java framework\utilitaire\ClassScanner.java framework\utilitaire\UrlMappingRegistry.java framework\utilitaire\MethodInvoker.java framework\utilitaire\ModelAndView.java framework\utilitaire\FormMapper.java framework\utilitaire\ValidationResult.java
+javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\ConfigLoader.java framework\utilitaire\ClassScanner.java framework\utilitaire\UrlMappingRegistry.java framework\utilitaire\MethodInvoker.java framework\utilitaire\ModelAndView.java framework\utilitaire\FormMapper.java framework\utilitaire\ValidationResult.java framework\utilitaire\ConversionService.java framework\utilitaire\ConverterRegistry.java framework\utilitaire\Converter.java framework\utilitaire\ConversionKey.java
 
 REM Compiler le service principal qui dépend des utilitaires
 javac -parameters -classpath "build\classes" -d "build\classes" framework\annotation\AnnotationReader.java
