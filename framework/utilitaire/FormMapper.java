@@ -27,7 +27,7 @@ public class FormMapper {
         }
     }
 
-    public static <T> T map(Map<String, String> source, Class<T> targetClass) {
+    public static <T> T map(Map<String, Object> source, Class<T> targetClass) {
         if (source == null) {
             source = new HashMap<>();
         }
@@ -40,11 +40,11 @@ public class FormMapper {
                 if (!source.containsKey(fieldName)) {
                     continue;
                 }
-                String rawValue = source.get(fieldName);
+                Object rawValue = source.get(fieldName);
                 Class<?> fieldType = field.getType();
                 Object converted;
                 try {
-                    converted = convertSimple(rawValue, fieldType);
+                    converted = convertValue(rawValue, fieldType);
                 } catch (RuntimeException e) {
                     mappingException.addFieldError(fieldName, "Invalid value '" + rawValue + "' for type " + fieldType.getSimpleName());
                     continue;
@@ -80,6 +80,25 @@ public class FormMapper {
         } catch (Throwable t) {
             throw new RuntimeException("Failed to map form data to " + targetClass.getName() + ": " + t.getMessage(), t);
         }
+    }
+
+    private static Object convertValue(Object raw, Class<?> type) {
+        if (raw == null) {
+            return null;
+        }
+
+        // Si la valeur est déjà du bon type, la retourner directement
+        if (type.isInstance(raw)) {
+            return raw;
+        }
+
+        // Si la valeur est une chaîne, utiliser la conversion simple
+        if (raw instanceof String) {
+            return convertSimple((String) raw, type);
+        }
+
+        // Dernier recours : utiliser toString() puis conversion simple
+        return convertSimple(raw.toString(), type);
     }
 
     private static Object convertSimple(String raw, Class<?> type) {
