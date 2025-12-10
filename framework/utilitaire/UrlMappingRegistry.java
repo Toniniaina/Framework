@@ -46,19 +46,34 @@ public class UrlMappingRegistry {
         for (Class<?> clazz : classes) {
             Method[] methods = clazz.getDeclaredMethods();
             
+            // Vérifier si la classe a un @RequestMapping global
+            String baseUrl = "";
+            if (clazz.isAnnotationPresent(RequestMapping.class)) {
+                baseUrl = clazz.getAnnotation(RequestMapping.class).value();
+                if (baseUrl.endsWith("/")) {
+                    baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+                }
+            }
+
             for (Method method : methods) {
                 if (method.isAnnotationPresent(GetMapping.class) || method.isAnnotationPresent(PostMapping.class) || method.isAnnotationPresent(RequestMapping.class)) {
-                    String url = null;
+                    String urlPart = null;
                     if (method.isAnnotationPresent(GetMapping.class)) {
                         GetMapping mapping = method.getAnnotation(GetMapping.class);
-                        url = mapping.value();
+                        urlPart = mapping.value();
                     } else if (method.isAnnotationPresent(PostMapping.class)) {
                         PostMapping mapping = method.getAnnotation(PostMapping.class);
-                        url = mapping.value();
+                        urlPart = mapping.value();
                     } else if (method.isAnnotationPresent(RequestMapping.class)) {
                         RequestMapping mapping = method.getAnnotation(RequestMapping.class);
-                        url = mapping.value();
+                        urlPart = mapping.value();
                     }
+                    
+                    // Combiner baseUrl et urlPart
+                    if (urlPart != null) {
+                        if (!urlPart.startsWith("/")) urlPart = "/" + urlPart;
+                        String url = baseUrl + urlPart;
+
                     // determine allowed method
                     String declaredMethod = "*";
                     if (method.isAnnotationPresent(GetMapping.class)) declaredMethod = "GET";
@@ -98,6 +113,7 @@ public class UrlMappingRegistry {
                             urlCount++;
                             System.out.println("Enregistré: " + declaredMethod + " " + url + 
                                              " -> " + clazz.getSimpleName() + "." + method.getName());
+                        }
                         }
                     }
                 }

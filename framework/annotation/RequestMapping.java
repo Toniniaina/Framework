@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
  * Lightweight RequestMapping supporting a path and an optional HTTP method name.
  * If method() is empty, it means any HTTP method is accepted (wildcard).
  */
-@Target(ElementType.METHOD)
+@Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RequestMapping {
     String value();

@@ -15,6 +15,9 @@ import framework.utilitaire.ConfigLoader;
 import framework.utilitaire.MethodInvoker;
 import framework.utilitaire.ModelAndView;
 import framework.utilitaire.ConversionService;
+import framework.utilitaire.JsonSerializer;
+import framework.annotation.RestController;
+import framework.annotation.ResponseBody;
 
 public class FrontServlet extends HttpServlet {
 
@@ -118,6 +121,20 @@ public class FrontServlet extends HttpServlet {
                 }
 
                 Object result = method.invoke(instance, args);
+
+                // Vérifier si c'est un RestController ou si la méthode a @ResponseBody
+                boolean isRestController = controller.isAnnotationPresent(RestController.class);
+                boolean hasResponseBody = method.isAnnotationPresent(ResponseBody.class);
+
+                if (isRestController || hasResponseBody) {
+                    // Retourner du JSON
+                    resp.setStatus(HttpServletResponse.SC_OK);
+                    resp.setContentType("application/json; charset=UTF-8");
+                    PrintWriter out = resp.getWriter();
+                    String json = JsonSerializer.toJson(result);
+                    out.println(json);
+                    return;
+                }
 
                 // Si la méthode retourne un ModelAndView, forward vers la vue
                 if (result instanceof ModelAndView) {
