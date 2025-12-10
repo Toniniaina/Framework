@@ -3,6 +3,7 @@ package framework.annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import framework.annotation.RestController;
 
 // Utilitaires déplacés
 import framework.utilitaire.ConfigLoader;
@@ -69,6 +70,9 @@ public class AnnotationReader {
             // Afficher aussi si la classe a l'annotation @Controller
             if (clazz.isAnnotationPresent(Controller.class)) {
                 System.out.println("  └─ Annotée avec @Controller");
+            }
+            if (clazz.isAnnotationPresent(RestController.class)) {
+                System.out.println("  └─ Annotée avec @RestController");
             }
             
             // Lister les méthodes avec annotations de mapping

@@ -1,6 +1,8 @@
 package framework.utilitaire;
 
 import framework.annotation.Controller;
+import framework.annotation.RestController;
+
 
 import java.io.File;
 import java.net.URL;
@@ -64,8 +66,8 @@ public class ClassScanner {
                 String className = file.getName().substring(0, file.getName().length() - 6);
                 try {
                     Class<?> clazz = Class.forName(packageName + "." + className);
-                    // Filtrer uniquement les classes avec @Controller
-                    if (clazz.isAnnotationPresent(Controller.class)) {
+                    // Filtrer uniquement les classes avec @Controller ou @RestController
+                    if (clazz.isAnnotationPresent(Controller.class) || clazz.isAnnotationPresent(RestController.class)) {
                         classes.add(clazz);
                     }
                 } catch (ClassNotFoundException e) {
