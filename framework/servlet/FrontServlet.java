@@ -2,8 +2,11 @@ package framework.servlet;
 
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
+import jakarta.servlet.annotation.MultipartConfig;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import framework.annotation.AnnotationReader;
@@ -18,11 +21,13 @@ import framework.utilitaire.ConversionService;
 import framework.utilitaire.JsonSerializer;
 import framework.annotation.RestController;
 import framework.annotation.ResponseBody;
+import framework.http.MultipartFile;
 
+@MultipartConfig(fileSizeThreshold = 10485760, maxFileSize = 20971520, maxRequestSize = 41943040)
 public class FrontServlet extends HttpServlet {
 
     @Override
-    protected void service(HttpServletRequest req, HttpServletResponse resp) 
+    protected void service(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
         String originalURI = (String) req.getAttribute("originalURI");
         String urlPath = originalURI != null ? originalURI : req.getRequestURI();
@@ -34,7 +39,8 @@ public class FrontServlet extends HttpServlet {
 
         // Essayer de retrouver un mapping pour la ressource demandée
         MappingInfo mapping = AnnotationReader.findMappingByUrl(resourcePath, req.getMethod());
-        if (mapping == null) mapping = new MappingInfo();
+        if (mapping == null)
+            mapping = new MappingInfo();
 
         if (mapping.isMethodNotAllowed()) {
             // Return 405 Method Not Allowed with Allow header and a friendly HTML page
@@ -47,7 +53,8 @@ public class FrontServlet extends HttpServlet {
             out.println("<html><head><meta charset='UTF-8'><title>405 - Method Not Allowed</title>"
                     + "<style>body{font-family:Arial, sans-serif;padding:32px;color:#333} h1{color:#b00020}</style></head><body>");
             out.println("<h1>405 - Method Not Allowed</h1>");
-            out.println("<p>The requested URL <code>" + resourcePath + "</code> exists but the HTTP method <strong>" + req.getMethod() + "</strong> is not allowed.</p>");
+            out.println("<p>The requested URL <code>" + resourcePath + "</code> exists but the HTTP method <strong>"
+                    + req.getMethod() + "</strong> is not allowed.</p>");
             out.println("<p>Allowed methods: <code>" + allowHeader + "</code></p>");
             out.println("<p><a href='" + req.getContextPath() + "'>Return to application root</a></p>");
             out.println("</body></html>");
@@ -66,8 +73,14 @@ public class FrontServlet extends HttpServlet {
                 for (int i = 0; i < parameters.length; i++) {
                     Class<?> type = parameters[i].getType();
                     // Injection of servlet objects
-                    if (type == HttpServletRequest.class) { args[i] = req; continue; }
-                    if (type == HttpServletResponse.class) { args[i] = resp; continue; }
+                    if (type == HttpServletRequest.class) {
+                        args[i] = req;
+                        continue;
+                    }
+                    if (type == HttpServletResponse.class) {
+                        args[i] = resp;
+                        continue;
+                    }
 
                     // @ModelAttribute binding (objet complet à partir des paramètres du formulaire)
                     ModelAttribute ma = parameters[i].getAnnotation(ModelAttribute.class);
@@ -92,25 +105,39 @@ public class FrontServlet extends HttpServlet {
                         continue;
                     }
 
-                        RequestParam rp = parameters[i].getAnnotation(RequestParam.class);
+                    RequestParam rp = parameters[i].getAnnotation(RequestParam.class);
                     if (rp != null) {
                         String paramName = rp.value();
                         if (paramName == null || paramName.isEmpty()) {
                             // If not provided, fallback to Java parameter name (requires -parameters)
                             paramName = parameters[i].getName();
                         }
-                        String raw = req.getParameter(paramName);
-                        if (raw == null) {
-                            if (rp.required()) {
-                                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                                resp.setContentType("text/plain; charset=UTF-8");
-                                resp.getWriter().println("Missing required parameter: " + paramName);
-                                return;
-                            } else {
-                                raw = rp.defaultValue();
+                        // Support for file upload parameters
+                        if (type == MultipartFile.class) {
+                            MultipartFile file = resolveMultipartFile(req, paramName);
+                            if (file == null || file.isEmpty()) {
+                                if (rp.required()) {
+                                    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                                    resp.setContentType("text/plain; charset=UTF-8");
+                                    resp.getWriter().println("Missing required file parameter: " + paramName);
+                                    return;
+                                }
                             }
+                            args[i] = file;
+                        } else {
+                            String raw = getParameterSmart(req, paramName);
+                            if (raw == null) {
+                                if (rp.required()) {
+                                    resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                                    resp.setContentType("text/plain; charset=UTF-8");
+                                    resp.getWriter().println("Missing required parameter: " + paramName);
+                                    return;
+                                } else {
+                                    raw = rp.defaultValue();
+                                }
+                            }
+                            args[i] = convertSimple(raw, type);
                         }
-                        args[i] = convertSimple(raw, type);
                         continue;
                     }
 
@@ -180,10 +207,12 @@ public class FrontServlet extends HttpServlet {
         }
 
         // Aucun mapping par annotations: essayer une convention simple
-        // Convention: /{section}/{method} -> {basePackage}.{section}.AdminController#{method}()
+        // Convention: /{section}/{method} ->
+        // {basePackage}.{section}.AdminController#{method}()
         try {
             String path = resourcePath;
-            if (path.startsWith("/")) path = path.substring(1);
+            if (path.startsWith("/"))
+                path = path.substring(1);
             String[] parts = path.split("/");
             if (parts.length >= 2) {
                 String section = parts[0];
@@ -236,7 +265,8 @@ public class FrontServlet extends HttpServlet {
         } catch (NoSuchMethodException e) {
             // Méthode non trouvée -> 404
         } catch (RuntimeException e) {
-            // Erreur d'invocation (ex: méthode inexistante) -> considérer comme non trouvé et tomber en 404
+            // Erreur d'invocation (ex: méthode inexistante) -> considérer comme non trouvé
+            // et tomber en 404
         } catch (Throwable t) {
             t.printStackTrace();
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
@@ -262,41 +292,119 @@ public class FrontServlet extends HttpServlet {
         try {
             Object target = targetType.getDeclaredConstructor().newInstance();
             java.lang.reflect.Field[] fields = targetType.getDeclaredFields();
-            ConversionService conversionService = ConversionService.getInstance();
 
             for (java.lang.reflect.Field field : fields) {
                 String name = field.getName();
-                String raw = req.getParameter(name);
-                if (raw == null) {
-                    continue;
-                }
-                Object converted = conversionService.convert(raw, field.getType());
+                Class<?> fieldType = field.getType();
 
-                boolean accessible = field.canAccess(target);
-                if (!accessible) field.setAccessible(true);
-                try {
-                    field.set(target, converted);
-                } finally {
-                    if (!accessible) field.setAccessible(false);
+                field.setAccessible(true);
+
+                if (fieldType == MultipartFile.class) {
+                    MultipartFile file = resolveMultipartFile(req, name);
+                    if (file != null && !file.isEmpty()) {
+                        field.set(target, file);
+                    }
+                } else {
+                    String raw = getParameterSmart(req, name);
+                    if (raw != null) {
+                        Object converted = ConversionService.getInstance().convert(raw, fieldType);
+                        field.set(target, converted);
+                    }
                 }
             }
 
             return target;
         } catch (Throwable t) {
-            throw new RuntimeException("Failed to bind @ModelAttribute for type " + targetType.getName() + ": " + t.getMessage(), t);
+            throw new RuntimeException("Failed to bind @ModelAttribute for type " + targetType.getName(), t);
         }
     }
 
+    private String getParameterSmart(HttpServletRequest req, String name) {
+        String ct = req.getContentType();
+        // Requête classique: utiliser getParameter normalement
+        if (ct == null || !ct.toLowerCase().startsWith("multipart/")) {
+            return req.getParameter(name);
+        }
+
+        // Requête multipart: lire les champs texte via les Parts
+        try {
+            for (Part part : req.getParts()) {
+                if (!name.equals(part.getName()))
+                    continue;
+                // Champ texte: submittedFileName() == null
+                if (part.getSubmittedFileName() != null)
+                    continue;
+
+                // ✅ CORRECTION: lire et retourner immédiatement
+                try (InputStream in = part.getInputStream();
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = in.read(buffer)) != -1) {
+                        baos.write(buffer, 0, len);
+                    }
+                    String charset = req.getCharacterEncoding() != null ? req.getCharacterEncoding() : "UTF-8";
+                    return baos.toString(charset);
+                }
+            }
+        } catch (IllegalStateException e) {
+            // Configuration multipart manquante ou requête trop grande
+            System.err.println("Erreur traitement multipart: " + e.getMessage());
+            return null;
+        } catch (Exception e) {
+            e.printStackTrace(); // Debug
+            return null; // ou gérer autrement
+        }
+        return null;
+    }
+
+    private MultipartFile resolveMultipartFile(HttpServletRequest req, String paramName) {
+        String ct = req.getContentType();
+        if (ct == null || !ct.toLowerCase().startsWith("multipart/")) {
+            return null;
+        }
+
+        try {
+            for (Part part : req.getParts()) {
+                if (!paramName.equals(part.getName()))
+                    continue;
+                // Fichier: submittedFileName() != null
+                if (part.getSubmittedFileName() == null)
+                    continue;
+
+                // ✅ CORRECTION: créer et retourner immédiatement
+                MultipartFile file = new MultipartFile(paramName, part);
+                return file.isEmpty() ? null : file;
+            }
+        } catch (IllegalStateException e) {
+            System.err.println("Erreur traitement multipart (fichier): " + e.getMessage());
+            return null;
+        } catch (Exception e) {
+            e.printStackTrace(); // Debug
+            return null;
+        }
+        return null;
+    }
+
     private Object convertSimple(String raw, Class<?> type) {
-        if (type == String.class) return raw;
-        if (type == int.class) return raw == null || raw.isEmpty() ? 0 : Integer.parseInt(raw);
-        if (type == Integer.class) return raw == null || raw.isEmpty() ? null : Integer.valueOf(raw);
-        if (type == long.class) return raw == null || raw.isEmpty() ? 0L : Long.parseLong(raw);
-        if (type == Long.class) return raw == null || raw.isEmpty() ? null : Long.valueOf(raw);
-        if (type == double.class) return raw == null || raw.isEmpty() ? 0d : Double.parseDouble(raw);
-        if (type == Double.class) return raw == null || raw.isEmpty() ? null : Double.valueOf(raw);
-        if (type == boolean.class) return raw != null && ("true".equalsIgnoreCase(raw) || "1".equals(raw));
-        if (type == Boolean.class) return raw == null ? null : ("true".equalsIgnoreCase(raw) || "1".equals(raw));
+        if (type == String.class)
+            return raw;
+        if (type == int.class)
+            return raw == null || raw.isEmpty() ? 0 : Integer.parseInt(raw);
+        if (type == Integer.class)
+            return raw == null || raw.isEmpty() ? null : Integer.valueOf(raw);
+        if (type == long.class)
+            return raw == null || raw.isEmpty() ? 0L : Long.parseLong(raw);
+        if (type == Long.class)
+            return raw == null || raw.isEmpty() ? null : Long.valueOf(raw);
+        if (type == double.class)
+            return raw == null || raw.isEmpty() ? 0d : Double.parseDouble(raw);
+        if (type == Double.class)
+            return raw == null || raw.isEmpty() ? null : Double.valueOf(raw);
+        if (type == boolean.class)
+            return raw != null && ("true".equalsIgnoreCase(raw) || "1".equals(raw));
+        if (type == Boolean.class)
+            return raw == null ? null : ("true".equalsIgnoreCase(raw) || "1".equals(raw));
         return null;
     }
 }

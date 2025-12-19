@@ -23,6 +23,9 @@ REM Compiler les utilitaires SANS dépendances servlet (MappingInfo avant UrlMap
 javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\MappingInfo.java
 javac -parameters -classpath "build\classes" -d "build\classes" framework\utilitaire\ConfigLoader.java framework\utilitaire\ClassScanner.java framework\utilitaire\UrlMappingRegistry.java framework\utilitaire\MethodInvoker.java framework\utilitaire\ModelAndView.java framework\utilitaire\FormMapper.java framework\utilitaire\ValidationResult.java framework\utilitaire\ConversionService.java framework\utilitaire\ConverterRegistry.java framework\utilitaire\Converter.java framework\utilitaire\ConversionKey.java framework\utilitaire\JsonSerializer.java
 
+REM Compiler les classes HTTP (ex: MultipartFile)
+javac -parameters -classpath "build\classes;jakarta.servlet-api_5.0.0.jar" -d "build\classes" framework\http\*.java
+
 REM Compiler le service principal qui dépend des utilitaires
 javac -parameters -classpath "build\classes" -d "build\classes" framework\annotation\AnnotationReader.java
 
