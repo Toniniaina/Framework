@@ -25,6 +25,7 @@ javac -parameters -classpath "build\classes" -d "build\classes" framework\utilit
 
 REM Compiler les classes HTTP (ex: MultipartFile)
 javac -parameters -classpath "build\classes;jakarta.servlet-api_5.0.0.jar" -d "build\classes" framework\http\*.java
+javac -parameters -classpath "build\classes;jakarta.servlet-api_5.0.0.jar" -d "build\classes" framework\session\*.java
 
 REM Compiler le service principal qui dépend des utilitaires
 javac -parameters -classpath "build\classes" -d "build\classes" framework\annotation\AnnotationReader.java
