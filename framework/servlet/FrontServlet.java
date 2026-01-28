@@ -65,6 +65,34 @@ public class FrontServlet extends HttpServlet {
 
         if (mapping.isFound()) {
             try {
+                // Vérification de l'autorisation @Auth
+                framework.annotation.Auth auth = mapping.getAuthAnnotation();
+                if (auth != null) {
+                    Session session = SessionManager.getOrCreate(req, resp);
+                    ConfigLoader cfg = new ConfigLoader();
+                    String authKey = cfg.getAuthSessionKey();
+                    String roleKey = cfg.getAuthRoleKey();
+
+                    Object authValue = session.get(authKey);
+                    if (authValue == null) {
+                        resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        resp.setContentType("text/html; charset=UTF-8");
+                        resp.getWriter().println("<h1>403 Forbidden</h1><p>Vous devez être authentifié pour accéder à cette ressource.</p>");
+                        return;
+                    }
+
+                    String requiredRole = auth.value();
+                    if (requiredRole != null && !requiredRole.isEmpty()) {
+                        Object userRole = session.get(roleKey);
+                        if (userRole == null || !requiredRole.equals(userRole.toString())) {
+                            resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            resp.setContentType("text/html; charset=UTF-8");
+                            resp.getWriter().println("<h1>403 Forbidden</h1><p>Accès refusé : rôle <b>" + requiredRole + "</b> requis.</p>");
+                            return;
+                        }
+                    }
+                }
+
                 Class<?> controller = mapping.getControllerClass();
                 Object instance = controller.getDeclaredConstructor().newInstance();
                 // Resolve method parameters (GET only) using @RequestParam and simple injection
