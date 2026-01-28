@@ -13,6 +13,8 @@ public class ConfigLoader {
     private String basePackage;
     private String viewPrefix;
     private String viewSuffix;
+    private String authSessionKey;
+    private String authRoleKey;
     
     /**
      * Charge le package de base depuis le fichier config.properties
@@ -43,17 +45,23 @@ public class ConfigLoader {
                 }
                 viewPrefix = propOrDefault(props, "view.prefix", "/WEB-INF/views/");
                 viewSuffix = propOrDefault(props, "view.suffix", ".jsp");
+                authSessionKey = propOrDefault(props, "session.auth.key", "is_auth");
+                authRoleKey = propOrDefault(props, "session.role.key", "user_role");
             } else {
                 System.out.println("ERREUR: Fichier config.properties introuvable!");
                 basePackage = "com.testframework"; // Valeur par défaut
                 viewPrefix = "/WEB-INF/views/";
                 viewSuffix = ".jsp";
+                authSessionKey = "is_auth";
+                authRoleKey = "user_role";
             }
         } catch (Exception e) {
             System.out.println("Erreur lors du chargement du config.properties: " + e.getMessage());
             basePackage = "com.testframework"; // Valeur par défaut
             viewPrefix = "/WEB-INF/views/";
             viewSuffix = ".jsp";
+            authSessionKey = "is_auth";
+            authRoleKey = "user_role";
         } finally {
             if (input != null) {
                 try {
@@ -84,6 +92,20 @@ public class ConfigLoader {
             loadConfiguration();
         }
         return viewSuffix;
+    }
+
+    public String getAuthSessionKey() {
+        if (authSessionKey == null) {
+            loadConfiguration();
+        }
+        return authSessionKey;
+    }
+
+    public String getAuthRoleKey() {
+        if (authRoleKey == null) {
+            loadConfiguration();
+        }
+        return authRoleKey;
     }
 
     private String propOrDefault(Properties p, String key, String defVal) {

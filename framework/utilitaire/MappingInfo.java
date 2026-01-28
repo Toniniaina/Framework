@@ -14,6 +14,7 @@ public class MappingInfo {
     private Map<String, String> pathVariables;
     private boolean methodNotAllowed;
     private java.util.Set<String> allowedMethods;
+    private framework.annotation.Auth authAnnotation;
     
     public MappingInfo(Class<?> controllerClass, Method method, String url) {
         this(controllerClass, method, url, "*");
@@ -28,6 +29,13 @@ public class MappingInfo {
         this.pathVariables = new HashMap<>();
         this.methodNotAllowed = false;
         this.allowedMethods = null;
+        
+        // Résoudre l'annotation @Auth (méthode d'abord, puis classe)
+        if (method != null && method.isAnnotationPresent(framework.annotation.Auth.class)) {
+            this.authAnnotation = method.getAnnotation(framework.annotation.Auth.class);
+        } else if (controllerClass != null && controllerClass.isAnnotationPresent(framework.annotation.Auth.class)) {
+            this.authAnnotation = controllerClass.getAnnotation(framework.annotation.Auth.class);
+        }
     }
     
     public MappingInfo() {
@@ -72,6 +80,10 @@ public class MappingInfo {
         this.allowedMethods = allowed == null ? new java.util.HashSet<>() : new java.util.HashSet<>(allowed);
     }
     
+    public framework.annotation.Auth getAuthAnnotation() {
+        return authAnnotation;
+    }
+
     public String getClassName() {
         return found ? controllerClass.getSimpleName() : null;
     }
