@@ -22,6 +22,8 @@ import framework.utilitaire.JsonSerializer;
 import framework.annotation.RestController;
 import framework.annotation.ResponseBody;
 import framework.http.MultipartFile;
+import framework.session.Session;
+import framework.session.SessionManager;
 
 @MultipartConfig(fileSizeThreshold = 10485760, maxFileSize = 20971520, maxRequestSize = 41943040)
 public class FrontServlet extends HttpServlet {
@@ -79,6 +81,10 @@ public class FrontServlet extends HttpServlet {
                     }
                     if (type == HttpServletResponse.class) {
                         args[i] = resp;
+                        continue;
+                    }
+                    if (type == Session.class) {
+                        args[i] = SessionManager.getOrCreate(req, resp);
                         continue;
                     }
 
